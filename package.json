@@ -1,0 +1,27 @@
+{
+  "name": "mmm-googletaskskanban",
+  "version": "1.0.0",
+  "description": "Module for the [MagicMirror²](https://github.com/MichMich/MagicMirror/) smart mirror.",
+  "main": "MMM-GoogleTasksKanban.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lpage30/MMM-GoogleTasksKanban.git"
+  },
+  "keywords": [
+    "Google",
+    "Tasks",
+    "Kanban"
+  ],
+  "author": "Larry Page",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/lpage30/MMM-GoogleTasksKanban/issues"
+  },
+  "homepage": "https://github.com/lpage30/MMM-GoogleTasksKanban#readme",
+  "dependencies": {
+    "googleapis": "^36.0.0"
+  }
+}
