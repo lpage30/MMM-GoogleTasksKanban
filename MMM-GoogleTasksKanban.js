@@ -7,13 +7,14 @@ Module.register("MMM-GoogleTasksKanban",{
 		reloadInterval: 5 * 60 * 1000, // every 10 minutes
         updateInterval: 10 * 1000, // every 10 seconds
 		animationSpeed: 2.5 * 1000, // 2.5 seconds
-		credentials: {},
-		token: {},
+		credentialsRelativeFilepath: './credentials.json',
+		roTokenRelativeFilepath: './rotoken.json',
+		rwTokenRelativeFilepath: ''
 	},
 	
 	// Define required scripts
 	getScripts: function () {
-		return ["moment.js"];
+		return ["moment.js", "node_helper.js", "googleTasksAPI.js"];
 	},
 
 	// Define required scripts.
@@ -66,11 +67,14 @@ Module.register("MMM-GoogleTasksKanban",{
 
 		Log.log("Starting module: " + this.name);
 		this.tasks = [];
-        this.activeItem = 0;
-
+		this.activeItem = 0;
+		if (this.config.listName) {
+			this.data.header = this.config.listName;
+		}
+		this.canUpdate = Boolean(config.rwTokenRelativeFilepath);
         this.loaded = false;
         this.error = false;
-        this.errorMessage = "";
+        this.errorMessage = '';
         this.retry = true;
 		this.config.updateInterval = this.config.reloadInterval;
 		this.requestUpdate();
