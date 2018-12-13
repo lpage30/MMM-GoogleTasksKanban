@@ -15,16 +15,10 @@ const isTaskCategory = (task, categoryName) => {
 	return categoryName === category;
 };
 const categoryToCardClassName = (categoryName) => {
-	if(categoryName === BACKLOG_CATEGORY) return 'scrum-board backlog';
-	if(categoryName === INPROGRESS_CATEGORY) return 'scrum-board in-progress';
-	if(categoryName === ISDONE_CATEGORY) return 'scrum-board done';
+	if(categoryName === BACKLOG_CATEGORY) return 'scrum-board backlog overflow';
+	if(categoryName === INPROGRESS_CATEGORY) return 'scrum-board in-progress overflow';
+	if(categoryName === ISDONE_CATEGORY) return 'scrum-board done overflow';
 	return 'scrum-board';
-};
-const categoryToButtonClassName = (categoryName) => {
-	if(categoryName === BACKLOG_CATEGORY) return 'button button-backlog';
-	if(categoryName === INPROGRESS_CATEGORY) return 'button button-progress';
-	if(categoryName === ISDONE_CATEGORY) return 'button button-done';
-	return 'button button-delete';
 };
 const categoryToHeadingName = (categoryName) => {
 	if(categoryName === BACKLOG_CATEGORY) return 'Backlog';
