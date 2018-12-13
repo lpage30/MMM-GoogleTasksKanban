@@ -1,8 +1,11 @@
-# MMM-GoogleTasks
+# MMM-GoogleTasksKanban
 
 Module for the [MagicMirror²](https://github.com/MichMich/MagicMirror/) smart mirror.
 
-Displays tasks from Google Tasks App in a Kanban board (backlog/InProgress/Done columns)
+Displays tasks from Google Tasks App in a Kanban board (backlog/InProgress/Done columns)  
+Implementation is based on:
+* [MMM-GoogleTasks](https://github.com/jgauth/MMM-GoogleTasks)
+* [Simple Jquery Scrum board](https://codepen.io/luisleguisamo/pen/dMXNZN)
 
 ### Example
 ![Example of MMM-GoogleTasksKanban](images/sample.png?raw=true "Example screenshot")

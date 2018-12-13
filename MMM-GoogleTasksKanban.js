@@ -1,3 +1,19 @@
+const BACKLOG_CATEGORY = 'backlog';
+const INPROGRESS_CATEGORY = 'inprogress';
+const ISDONE_CATEGORY = 'isdone';
+const CATEGORIES = [BACKLOG_CATEGORY, INPROGRESS_CATEGORY, ISDONE_CATEGORY];
+const isTaskCategory = (task, categoryName) => {
+	let category = BACKLOG_CATEGORY;
+	if (task.status !== 'completed' && task.due) {
+		category = INPROGRESS_CATEGORY;
+	} else if(task.status === 'completed') {
+		category = ISDONE_CATEGORY;
+	}
+	for(let index = 0; index < task.subTasks.length; index += 1) {
+		if (isTaskCategory(task.subTasks[index], categoryName)) return true;
+	}
+	return categoryName === category;
+}
 Module.register("MMM-GoogleTasksKanban",{
 	// Default module config.
 	defaults: {
@@ -82,11 +98,7 @@ Module.register("MMM-GoogleTasksKanban",{
 		this.scheduleUpdateRequestInterval();			
 	},
 	extractTask: function (payloadItem) {
-		const subTasks = [];
-		const backlog = payloadItem.status !== 'completed' && !payloadItem.due;
-		const inProgress = payloadItem.status !== 'completed' && payloadItem.due;
-		const isDone = payloadItem.status === 'completed';
-		return Object.assign({ subTasks, backlog, inProgress, isDone }, payloadItem);
+		return Object.assign({ subTasks: [] }, payloadItem);
 	},
 	createTaskTree: function (payloadItems) {
 		var self = this;
@@ -143,7 +155,7 @@ Module.register("MMM-GoogleTasksKanban",{
 		}
 	},
 
-	addSubTaskToCard: function(wrapper, subTask) {
+	addSubTaskToCard: function(wrapper, subTask, categoryName) {
 		var self = this;
 
 		var subtaskElem = document.createElement('div');
@@ -156,13 +168,17 @@ Module.register("MMM-GoogleTasksKanban",{
 		if (subTask.subTasks.length > 0) {
 			var subTasksWrapper = document.createElement('div');
 			subTask.subTasks.forEach(function (subSubTask) {
-				self.addSubTaskToCard(subTasksWrapper, subSubTask);
+				if (isTaskCategory(subSubTask, categoryName)) {
+					self.addSubTaskToCard(subTasksWrapper, subSubTask, categoryName);
+				}
 			});
-			subtaskElem.appendChild(subTasksWrapper);
+			if (subTasksWrapper.childElementCount > 0) {
+				subtaskElem.appendChild(subTasksWrapper);
+			}
 		}
 		wrapper.append(subtaskElem);
 	},
-	addTaskAsCard: function (wrapper, task) {
+	addTaskAsCard: function (wrapper, task, categoryName) {
 		var self = this;
 
 		var card = document.createElement('div');
@@ -190,29 +206,27 @@ Module.register("MMM-GoogleTasksKanban",{
 		if (task.subTasks.length > 0) {
 			var subTasksWrapper = document.createElement('div');
 			task.subTasks.forEach(function (subTask) {
-				self.addSubTaskToCard(subTasksWrapper, subTask);
+				if (isTaskCategory(subTask, categoryName)) {
+					self.addSubTaskToCard(subTasksWrapper, subTask, categoryName);
+				}
 			});
-			card.appendChild(subTasksWrapper);
+			if (subTasksWrapper.childElementCount > 0) {
+				card.appendChild(subTasksWrapper);
+			}
 		}
 		wrapper.appendChild(card);
 	},
 	categoryToClassName: function (categoryName) {
-		if(categoryName === 'backlog') return 'scrum-board backlog';
-		if(categoryName === 'inprogress') return 'scrum-board in-progress';
-		if(categoryName === 'done') return 'scrum-board done';
+		if(categoryName === BACKLOG_CATEGORY) return 'scrum-board backlog';
+		if(categoryName === INPROGRESS_CATEGORY) return 'scrum-board in-progress';
+		if(categoryName === ISDONE_CATEGORY) return 'scrum-board done';
 		return 'scrum-board';
 	},
 	categoryToHeadingName: function (categoryName) {
-		if(categoryName === 'backlog') return 'Backlog';
-		if(categoryName === 'inprogress') return 'In Progress';
-		if(categoryName === 'done') return 'Done';
+		if(categoryName === BACKLOG_CATEGORY) return 'Backlog';
+		if(categoryName === INPROGRESS_CATEGORY) return 'In Progress';
+		if(categoryName === ISDONE_CATEGORY) return 'Done';
 		return categoryName;
-	},
-	categoryToTaskTest: function (categoryName, task) {
-		if(categoryName === 'backlog') return task.backlog;
-		if(categoryName === 'inprogress') return task.inProgress;
-		if(categoryName === 'done') return task.isDone;
-		return true;
 	},
 	addCategorizedTasks: function (scrumBoard, categoryName) {
 		var self = this;
@@ -224,8 +238,8 @@ Module.register("MMM-GoogleTasksKanban",{
 		category.appendChild(heading);
 
 		self.tasks.forEach(function (task) {
-			if (self.categoryToTaskTest(categoryName, task)) {
-				self.addTaskAsCard(category, task);
+			if (isTaskCategory(task, categoryName)) {
+				self.addTaskAsCard(category, task, categoryName);
 			}
 		});
 		scrumBoard.appendChild(category);
@@ -247,7 +261,7 @@ Module.register("MMM-GoogleTasksKanban",{
                 scrumBoard.innerHTML = "NO_CARDS";
 				return scrumBoard;
 			}
-			['backlog', 'inprogress', 'done'].forEach(function (categoryName) {
+			CATEGORIES.forEach(function (categoryName) {
 				self.addCategorizedTasks(scrumBoard, categoryName);
 			});
 			return scrumBoard;
