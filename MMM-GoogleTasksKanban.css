@@ -64,7 +64,9 @@ body{
   }
   .scrum-board{
     flex: 1;
-    padding:20px;
+    margin: 4em 4.5em 0 4em;
+    width: 90%;
+    height: 100%;
     border-right:1px solid #ddd;
     border-bottom:1px solid #ddd;
   }
