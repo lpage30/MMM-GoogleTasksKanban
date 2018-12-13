@@ -13,19 +13,41 @@ const isTaskCategory = (task, categoryName) => {
 		if (isTaskCategory(task.subTasks[index], categoryName)) return true;
 	}
 	return categoryName === category;
-}
+};
+const categoryToCardClassName = (categoryName) => {
+	if(categoryName === BACKLOG_CATEGORY) return 'scrum-board backlog';
+	if(categoryName === INPROGRESS_CATEGORY) return 'scrum-board in-progress';
+	if(categoryName === ISDONE_CATEGORY) return 'scrum-board done';
+	return 'scrum-board';
+};
+const categoryToButtonClassName = (categoryName) => {
+	if(categoryName === BACKLOG_CATEGORY) return 'button button-backlog';
+	if(categoryName === INPROGRESS_CATEGORY) return 'button button-progress';
+	if(categoryName === ISDONE_CATEGORY) return 'button button-done';
+	return 'button button-delete';
+};
+const categoryToHeadingName = (categoryName) => {
+	if(categoryName === BACKLOG_CATEGORY) return 'Backlog';
+	if(categoryName === INPROGRESS_CATEGORY) return 'In Progress';
+	if(categoryName === ISDONE_CATEGORY) return 'Done';
+	return categoryName;
+};
+const itemToTask = (item, parentTask) => Object.assign({ subTasks: [], parentTask }, item);
+const taskToItem = (task) => Object.assign({}, task, { subTasks: undefined, parentTask: undefined });
+
 Module.register("MMM-GoogleTasksKanban",{
 	// Default module config.
 	defaults: {
 
 		listName: '', // List Name resolves to listID
 		listID: '', // List ID resolves to list Name
+		inprogressDays: 10, // Number of days to set (from now) for due when transitioning to in progress.
 		reloadInterval: 5 * 60 * 1000, // every 10 minutes
         updateInterval: 10 * 1000, // every 10 seconds
 		animationSpeed: 2.5 * 1000, // 2.5 seconds
-		credentialsRelativeFilepath: './credentials.json',
-		roTokenRelativeFilepath: './rotoken.json',
-		rwTokenRelativeFilepath: ''
+		credentialsRelativeFilepath: '',
+		roTokenRelativeFilepath: '',
+		rwTokenRelativeFilepath: '',
 	},
 	
 	// Define required scripts
@@ -112,7 +134,7 @@ Module.register("MMM-GoogleTasksKanban",{
 			if (payloadItem.parent) {
 				return;
 			}
-			const task = self.extractTask(payloadItem);
+			const task = itemToTask(payloadItem);
 			newTasks.push(task);
 			taskMap.set(task.id, task);
 		});
@@ -126,7 +148,7 @@ Module.register("MMM-GoogleTasksKanban",{
 				}
 				const task = taskMap.get(payloadItem.parent);
 				if (task) {
-					const subTask = self.extractTask(payloadItem);
+					const subTask = itemToTask(payloadItem, task);
 					task.subTasks.push(subTask);
 					taskMap.set(subTask.id, subTask);
 				} else {
@@ -140,11 +162,16 @@ Module.register("MMM-GoogleTasksKanban",{
 		var self = this;
 		const updateEvent = `UPDATE_GOOGLE_TASKS_${self.identifier}`;
 		const failedEvent = `FAILED_GOOGLE_TASKS_${self.identifier}`;
+		const transitionEvent = `TRANSITIONED_GOOGLE_TASKS_${self.identifoer}`;
 		if (notification === updateEvent) {
 			self.config = Object.assign({}, self.config, payload.config || {});
 			self.data.header = self.config.listName;
 			self.loaded = true;
 			self.tasks = self.createTaskTree(payload.tasks);
+			self.updateDom(self.config.animationSpeed);
+		}
+		if (notification === transitionEvent) {
+			Log.log(payload);
 			self.updateDom(self.config.animationSpeed);
 		}
 		if (notification === failedEvent) {
@@ -154,7 +181,67 @@ Module.register("MMM-GoogleTasksKanban",{
 			self.updateDom(self.config.animationSpeed);
 		}
 	},
-
+	transitionTask: function (task, newCategoryName) {
+		var self = this;
+		let method = 'PUT';
+		if (newCategoryName === BACKLOG_CATEGORY) {
+			task.status = 'needsAction';
+			task.due = null;
+		} else if (newCategoryName === INPROGRESS_CATEGORY) {
+			task.status = 'needsAction';
+			task.due = new Date();
+			task.due.setDate(task.due.getDate() + self.config.inprogressDays);
+		} else if (newCategoryName === ISDONE_CATEGORY) {
+			task.status = 'completed'
+		} else if (newCategoryName === 'delete') {
+			method = 'DELETE';
+			if (task.parentTask) {
+				const newSubTasks = [];
+				task.parentTask.subTasks.forEach((subTask) => {
+					if (subTask.id !== task.id) {
+						newSubTasks.push(subTask);
+					}
+				});
+				task.parentTask.subTasks = newSubTasks;
+			} else {
+				const newTasks = [];
+				self.tasks.forEach((aTask) => {
+					if (aTask.id !== task.id) {
+						newTasks.push(aTask);
+					}
+				});
+				self.tasks = newTasks;
+			}
+		}
+	    Log.log(`${method} TASK ${task.title}`);
+		self.sendSocketNotification(`${method}_GOOGLE_TASKS`, { identifier: self.identifier, config: self.config, item: taskToItem(task) });		
+	},
+	addStateTransitions: function (wrapper, task, categoryName) {
+		var self = this;
+		if (!self.canUpdate) return;
+		function makeOnChangeHandler(selectElem, changingTask) {
+			return function () {
+				self.transitionTask(changingTask, selectElem.options[selectElem.selectedIndex].value);
+			};
+		}
+		var select = document.createElement('SELECT');
+		select.className = 'drag';
+		CATEGORIES.forEach((categoryType) => {
+			if (categoryType === categoryName) return;
+			var option = document.createElement('option');
+			option.setAttribute('value', categoryType);
+			var text = document.createTextNode(categoryToHeadingName(categoryType));
+			option.appendChild(text);
+			select.appendChild(option);
+		});
+		var delOption = document.createElement('option');
+		delOption.setAttribute('value', 'delete');
+		var text = document.createTextNode('Delete');
+		delOption.appendChild(text);
+		select.appendChild(delOption);
+		select.onchange = makeOnChangeHandler(select, task);
+		wrapper.appendChild(select);
+	},
 	addSubTaskToCard: function(wrapper, subTask, categoryName) {
 		var self = this;
 
@@ -164,6 +251,7 @@ Module.register("MMM-GoogleTasksKanban",{
 		var titleElement = document.createElement('span');
 		titleElement.innerHTML = subTask.title;
 		subtaskElem.appendChild(titleElement);
+		self.addStateTransitions(subtaskElem, subTask, categoryName);
 
 		if (subTask.subTasks.length > 0) {
 			var subTasksWrapper = document.createElement('div');
@@ -189,6 +277,8 @@ Module.register("MMM-GoogleTasksKanban",{
 			title.innerHTML += ` (${moment(task.due).fromNow()})`;
 		}
 		card.appendChild(title);
+		self.addStateTransitions(card, task, categoryName);
+
 		if (task.notes) {
 			var desc = document.createElement('div');
 			var lines = task.notes.split('\n');
@@ -216,25 +306,13 @@ Module.register("MMM-GoogleTasksKanban",{
 		}
 		wrapper.appendChild(card);
 	},
-	categoryToClassName: function (categoryName) {
-		if(categoryName === BACKLOG_CATEGORY) return 'scrum-board backlog';
-		if(categoryName === INPROGRESS_CATEGORY) return 'scrum-board in-progress';
-		if(categoryName === ISDONE_CATEGORY) return 'scrum-board done';
-		return 'scrum-board';
-	},
-	categoryToHeadingName: function (categoryName) {
-		if(categoryName === BACKLOG_CATEGORY) return 'Backlog';
-		if(categoryName === INPROGRESS_CATEGORY) return 'In Progress';
-		if(categoryName === ISDONE_CATEGORY) return 'Done';
-		return categoryName;
-	},
 	addCategorizedTasks: function (scrumBoard, categoryName) {
 		var self = this;
 
 		var category = document.createElement('div');
-		category.className = self.categoryToClassName(categoryName);
+		category.className = categoryToCardClassName(categoryName);
 		var heading = document.createElement('h2');
-		heading.innerHTML = self.categoryToHeadingName(categoryName);
+		heading.innerHTML = categoryToHeadingName(categoryName);
 		category.appendChild(heading);
 
 		self.tasks.forEach(function (task) {

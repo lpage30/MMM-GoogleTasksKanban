@@ -86,4 +86,43 @@ function fetchTasks (identifier, config, successCallback, failureCallback) {
         });            
     }
 }
-module.exports = { fetchTasks };
+function putTask(identifier, config, item, successCallback, failureCallback) {
+    let clientService = null;
+    try {
+        clientService = getClientService(identifier, config);
+    } catch (err) {
+        failureCallback(`Failed to acquire authorized client. Reset token, or client credentials. ${err}`);
+        return;
+    }
+    clientService.service.tasks.update({
+        task: item.id,
+        tasklist: config.listID,
+        body: item,
+    }, (err, res) => {
+        if (err) {
+            failureCallback(`The tasks.update API call for '${item.title}' in '${config.listName}' returned an error: ${err}`);
+            return;
+        }
+        successCallback(`Successfully updated '${item.title}' in '${config.listName}'`);
+    });
+}
+function deleteTask(identifier, config, item, successCallback, failureCallback) {
+    let clientService = null;
+    try {
+        clientService = getClientService(identifier, config);
+    } catch (err) {
+        failureCallback(`Failed to acquire authorized client. Reset token, or client credentials. ${err}`);
+        return;
+    }
+    clientService.service.tasks.delete({
+        task: item.id,
+        tasklist: config.listID,
+    }, (err, res) => {
+        if (err) {
+            failureCallback(`The tasks.delete API call for '${item.title}' from '${config.listName}' returned an error: ${err}`);
+            return;
+        }
+        successCallback(`Successfully deleted '${item.title}' from '${config.listName}'`);
+    });
+}
+module.exports = { fetchTasks, putTask, deleteTask };

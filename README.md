@@ -8,7 +8,8 @@ Implementation is based on:
 * [Simple Jquery Scrum board](https://codepen.io/luisleguisamo/pen/dMXNZN)
 
 ### Example
-![Example of MMM-GoogleTasksKanban](images/sample.png?raw=true "Example screenshot")
+![Example of MMM-GoogleTasksKanban with just read-only auth token](images/rosample.png?raw=true "Example read-only token screenshot")
+![Example of MMM-GoogleTasksKanban with just read-write auth token](images/rwsample.png?raw=true "Example read-write token screenshot")
 
 ### Dependencies
 The [Google Node.js client library](https://www.npmjs.com/package/googleapis)
@@ -62,8 +63,9 @@ var config = {
 | Option                  | Details
 |------------------------ |--------------
 | `listID` or `listName`  | *Required* - List ID or Name from your Google Tasks application
+| `inprogressDays`  | *Optional* - When changing task to inprogress the task due date will be set to current day plus this many days.<br> **Default value:** `10` (10 days)
 | `updateInterval`        | *Optional* - Interval at which content updates (Milliseconds) <br><br> **Possible values:** `2000` - `86400000` (Tasks API has default maximum of 50,000 calls per day.) <br> **Default value:** `10000` (10 seconds)
-| `animationSpeed`        | Speed of the update animation. (Milliseconds) <br><br> **Possible values:** `0` - `5000` <br> **Default value:** `2000` (2 seconds)
+| `animationSpeed`        | *Optional* - Speed of the update animation. (Milliseconds) <br><br> **Possible values:** `0` - `5000` <br> **Default value:** `2000` (2 seconds)
 | `credentialsRelativeFilepath`  | *Required* - Filepath relative to `MagicMirror/config` directory for the credentials used by this instance.
 | `roTokenRelativeFilepath` or `rwTokenRelativeFilepath`  | *Required* - Filepath relative to `MagicMirror/config` directory for the tokens used by this instance. If rw is provided than that token will be used exclusively and enable moving of tasks to in progress or completed or backlog.
 
