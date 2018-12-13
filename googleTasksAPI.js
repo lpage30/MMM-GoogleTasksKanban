@@ -97,10 +97,10 @@ function putTask(identifier, config, item, successCallback, failureCallback) {
     clientService.service.tasks.update({
         task: item.id,
         tasklist: config.listID,
-        body: item,
+        resource: item,
     }, (err, res) => {
         if (err) {
-            failureCallback(`The tasks.update API call for '${item.title}' in '${config.listName}' returned an error: ${err}`);
+            failureCallback(`The tasks.update API call for '${item.title}'(${item.id}) in '${config.listName}'(${config.listID}) returned an error: ${err}, ${JSON.stringify(item)}`);
             return;
         }
         successCallback(`Successfully updated '${item.title}' in '${config.listName}'`);
@@ -119,7 +119,7 @@ function deleteTask(identifier, config, item, successCallback, failureCallback) 
         tasklist: config.listID,
     }, (err, res) => {
         if (err) {
-            failureCallback(`The tasks.delete API call for '${item.title}' from '${config.listName}' returned an error: ${err}`);
+            failureCallback(`The tasks.delete API call for '${item.title}'(${item.id}) from '${config.listName}'(${config.listID}) returned an error: ${err}, ${JSON.stringify(item)}`);
             return;
         }
         successCallback(`Successfully deleted '${item.title}' from '${config.listName}'`);

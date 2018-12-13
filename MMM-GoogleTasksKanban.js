@@ -33,7 +33,22 @@ const categoryToHeadingName = (categoryName) => {
 	return categoryName;
 };
 const itemToTask = (item, parentTask) => Object.assign({ subTasks: [], parentTask }, item);
-const taskToItem = (task) => Object.assign({}, task, { subTasks: undefined, parentTask: undefined });
+const getRFC3339DateTime = (days) => {
+	const RFC3339_Format = 'YYYY-MM-DDTHH:mm:ss.000Z';
+	let result = moment();
+	if (days) {
+		result = result.add('days', days);
+	}
+	return result.format(RFC3339_Format);
+};
+const taskToItemUpdate = (task) => ({
+		id: task.id,
+		title: task.title,
+		status: task.status,
+		completed: task.completed,
+		due: task.due,
+		updated: getRFC3339DateTime(),
+	});
 
 Module.register("MMM-GoogleTasksKanban",{
 	// Default module config.
@@ -109,8 +124,8 @@ Module.register("MMM-GoogleTasksKanban",{
 		if (this.config.listName) {
 			this.data.header = this.config.listName;
 		}
-		this.canUpdate = Boolean(config.rwTokenRelativeFilepath);
-        this.loaded = false;
+		this.loaded = false;
+		this.canUpdate = false;
         this.error = false;
         this.errorMessage = '';
         this.retry = true;
@@ -119,13 +134,10 @@ Module.register("MMM-GoogleTasksKanban",{
 		this.pause = false;
 		this.scheduleUpdateRequestInterval();			
 	},
-	extractTask: function (payloadItem) {
-		return Object.assign({ subTasks: [] }, payloadItem);
-	},
 	createTaskTree: function (payloadItems) {
 		var self = this;
 		const newTasks = [];
-		if (!payloadItems) {
+		if (!payloadItems || payloadItems.length === 0) {
 			Log.log("No tasks found.")
 			return newTasks;
 		}
@@ -134,6 +146,7 @@ Module.register("MMM-GoogleTasksKanban",{
 			if (payloadItem.parent) {
 				return;
 			}
+			Log.log(`ITEM: ${JSON.stringify(payloadItem)}`);
 			const task = itemToTask(payloadItem);
 			newTasks.push(task);
 			taskMap.set(task.id, task);
@@ -162,11 +175,14 @@ Module.register("MMM-GoogleTasksKanban",{
 		var self = this;
 		const updateEvent = `UPDATE_GOOGLE_TASKS_${self.identifier}`;
 		const failedEvent = `FAILED_GOOGLE_TASKS_${self.identifier}`;
-		const transitionEvent = `TRANSITIONED_GOOGLE_TASKS_${self.identifoer}`;
+		const transitionEvent = `TRANSITIONED_GOOGLE_TASKS_${self.identifier}`;
 		if (notification === updateEvent) {
 			self.config = Object.assign({}, self.config, payload.config || {});
 			self.data.header = self.config.listName;
 			self.loaded = true;
+			if(self.config.rwTokenRelativeFilepath) {
+				self.canUpdate = true;
+			}
 			self.tasks = self.createTaskTree(payload.tasks);
 			self.updateDom(self.config.animationSpeed);
 		}
@@ -186,13 +202,15 @@ Module.register("MMM-GoogleTasksKanban",{
 		let method = 'PUT';
 		if (newCategoryName === BACKLOG_CATEGORY) {
 			task.status = 'needsAction';
-			task.due = null;
+			task.due = undefined;
+			task.completed = undefined;
 		} else if (newCategoryName === INPROGRESS_CATEGORY) {
 			task.status = 'needsAction';
-			task.due = new Date();
-			task.due.setDate(task.due.getDate() + self.config.inprogressDays);
+			task.due = getRFC3339DateTime(self.config.inprogressDays);
+			task.completed = undefined;
 		} else if (newCategoryName === ISDONE_CATEGORY) {
-			task.status = 'completed'
+			task.status = 'completed';
+			task.completed = getRFC3339DateTime();
 		} else if (newCategoryName === 'delete') {
 			method = 'DELETE';
 			if (task.parentTask) {
@@ -214,7 +232,7 @@ Module.register("MMM-GoogleTasksKanban",{
 			}
 		}
 	    Log.log(`${method} TASK ${task.title}`);
-		self.sendSocketNotification(`${method}_GOOGLE_TASKS`, { identifier: self.identifier, config: self.config, item: taskToItem(task) });		
+		self.sendSocketNotification(`${method}_GOOGLE_TASKS`, { identifier: self.identifier, config: self.config, item: taskToItemUpdate(task) });		
 	},
 	addStateTransitions: function (wrapper, task, categoryName) {
 		var self = this;
@@ -225,6 +243,9 @@ Module.register("MMM-GoogleTasksKanban",{
 			};
 		}
 		var select = document.createElement('SELECT');
+		var firstOption = document.createElement('option');
+		firstOption.appendChild(document.createTextNode('- Move To -'));
+		select.appendChild(firstOption);
 		select.className = 'drag';
 		CATEGORIES.forEach((categoryType) => {
 			if (categoryType === categoryName) return;
@@ -345,7 +366,7 @@ Module.register("MMM-GoogleTasksKanban",{
 			return scrumBoard;
 		}
 		if (self.error) {
-			scrumBoard.innerHTML = "Please check your config file, an error occured: " + self.errorMessage;
+			scrumBoard.innerHTML = `ERROR: ${self.errorMessage}`;
 			scrumBoard.className = "xsmall dimmed";
 		} else {
 			scrumBoard.innerHTML = "<span class='small fa fa-refresh fa-spin fa-fw'></span>";
