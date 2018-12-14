@@ -188,6 +188,12 @@ Module.register("MMM-GoogleTasksKanban",{
 			task.completed = getRFC3339DateTime();
 		} else if (newCategoryName === 'delete') {
 			method = 'DELETE';
+			if (task.subTasks.length > 0) {
+				const subTasks = task.subTasks;
+				subTasks.forEach((subTask) => {
+					self.transitionTask(subTask, newCategoryName);
+				});
+			}
 			if (task.parentTask) {
 				const newSubTasks = [];
 				task.parentTask.subTasks.forEach((subTask) => {
@@ -209,9 +215,8 @@ Module.register("MMM-GoogleTasksKanban",{
 		if (!task.isFakeTask) {
 			Log.log(`${method} TASK ${task.title}`);
 			self.sendSocketNotification(`${method}_GOOGLE_TASKS`, { identifier: self.identifier, config: self.config, item: taskToItemUpdate(task) });		
-		}
-		if (newCategoryName === 'delete' && task.parentTask && task.parentTask.subTasks.length === 0) {
-			self.transitionEvent(task.parentTask, categoryName);
+		} else {
+			self.updateDom(self.config.animationSpeed);
 		}
 	},
 	addStateTransitions: function (wrapper, task, categoryName) {

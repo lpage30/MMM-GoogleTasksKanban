@@ -20,9 +20,11 @@ const node_helper = {
         if (notification === 'PUT_GOOGLE_TASKS') {
             putTask(payload.identifier, payload.config, payload.item,
                 function (successMessage) {
+                    console.log(`SENDING: TRANSITIONED_GOOGLE_TASKS_${payload.identifier} ${successMessage}`);
                     self.sendSocketNotification(`TRANSITIONED_GOOGLE_TASKS_${payload.identifier}`, successMessage);
                 },
                 function (failureMessage) {
+                    console.log(`SENDING: FAILED_GOOGLE_TASKS_${payload.identifier} ${failureMessage}`);
                     self.sendSocketNotification(`FAILED_GOOGLE_TASKS_${payload.identifier}`, failureMessage);
                 }
             );
@@ -30,9 +32,11 @@ const node_helper = {
         if (notification === 'DELETE_GOOGLE_TASKS') {
             deleteTask(payload.identifier, payload.config, payload.item,
                 function (successMessage) {
+                    console.log(`SENDING: TRANSITIONED_GOOGLE_TASKS_${payload.identifier} ${successMessage}`);
                     self.sendSocketNotification(`TRANSITIONED_GOOGLE_TASKS_${payload.identifier}`, successMessage);
                 },
                 function (failureMessage) {
+                    console.log(`SENDING: FAILED_GOOGLE_TASKS_${payload.identifier} ${failureMessage}`);
                     self.sendSocketNotification(`FAILED_GOOGLE_TASKS_${payload.identifier}`, failureMessage);
                 }
             );
