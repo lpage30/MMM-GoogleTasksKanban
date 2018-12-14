@@ -8,9 +8,11 @@ const node_helper = {
         if (notification === 'GET_GOOGLE_TASKS') {
             fetchTasks(payload.identifier, payload.config, 
                 function (config_payload) {
+                    console.log(`SENDING: UPDATE_GOOGLE_TASKS_${payload.identifier} ${JSON.stringify(config_payload.config)} ${config_payload.tasks.length} Tasks`);
                     self.sendSocketNotification(`UPDATE_GOOGLE_TASKS_${payload.identifier}`, config_payload);
                 },
                 function (failureMessage) {
+                    console.log(`SENDING: FAILED_GOOGLE_TASKS_${payload.identifier} ${failureMessage}`);
                     self.sendSocketNotification(`FAILED_GOOGLE_TASKS_${payload.identifier}`, failureMessage);
                 }
             );

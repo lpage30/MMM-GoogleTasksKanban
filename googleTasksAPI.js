@@ -47,6 +47,7 @@ function fetchTasks (identifier, config, successCallback, failureCallback) {
         clientService.service.tasklists.list({
             maxResults: 100,
           }, (err, res) => {
+            
             if (err) {
                 failureCallback(`The tasklists.list API returned an error: ${err}`);
                 return;

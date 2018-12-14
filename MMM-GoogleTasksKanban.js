@@ -26,7 +26,8 @@ const categoryToHeadingName = (categoryName) => {
 	if(categoryName === ISDONE_CATEGORY) return 'Done';
 	return categoryName;
 };
-const itemToTask = (item, parentTask) => Object.assign({ subTasks: [], parentTask }, item);
+const itemToMissingParent = (item) => Object.assign( { subTasks: [] }, item, { id: `${item.id}Parent`, isFakeTask: true, title: '**missing parent**' } );
+const itemToTask = (item, parentTask = undefined) => Object.assign({ subTasks: [], parentTask, isFakeTask: false }, item);
 const getRFC3339DateTime = (days) => {
 	const RFC3339_Format = 'YYYY-MM-DDTHH:mm:ss.000Z';
 	let result = moment();
@@ -44,6 +45,37 @@ const taskToItemUpdate = (task) => ({
 		updated: getRFC3339DateTime(),
 	});
 
+const itemsToTaskTree = (items) => {
+	const newTasks = [];
+	if (!items || items.length === 0) {
+		return newTasks;
+	}
+	const taskMap = new Map();
+	items.forEach(function (item) {
+		if (item.parent) {
+			return;
+		}
+		const task = itemToTask(item);
+		newTasks.push(task);
+		taskMap.set(task.id, task);
+	});
+	// go through list culling out subtasks and adding them to their parent, until they all are accounted for.
+	items.forEach(function (item) {
+		if (!item.parent || taskMap.has(item.id)) {
+			return;
+		}
+		let parentTask = taskMap.get(item.parent);
+		if (!parentTask) {
+			parentTask = itemToMissingParent(item);
+			newTasks.push(parentTask);
+		}
+		const subTask = itemToTask(item, parentTask);
+		parentTask.subTasks.push(subTask);
+		taskMap.set(subTask.id, subTask);
+	});
+	return newTasks;
+};
+
 Module.register("MMM-GoogleTasksKanban",{
 	// Default module config.
 	defaults: {
@@ -51,7 +83,8 @@ Module.register("MMM-GoogleTasksKanban",{
 		listName: '', // List Name resolves to listID
 		listID: '', // List ID resolves to list Name
 		inprogressDays: 10, // Number of days to set (from now) for due when transitioning to in progress.
-        updateInterval: 0, // every 24 seconds
+		updateInterval: 0, // Never
+		animationSpeed: 0,
 		credentialsRelativeFilepath: '',
 		roTokenRelativeFilepath: '',
 		rwTokenRelativeFilepath: '',
@@ -109,56 +142,23 @@ Module.register("MMM-GoogleTasksKanban",{
 		this.pause = false;
 		this.scheduleUpdateRequestInterval();			
 	},
-	createTaskTree: function (payloadItems) {
-		var self = this;
-		const newTasks = [];
-		if (!payloadItems || payloadItems.length === 0) {
-			Log.log("No tasks found.")
-			return newTasks;
-		}
-		const taskMap = new Map();
-		payloadItems.forEach(function (payloadItem) {
-			if (payloadItem.parent) {
-				return;
-			}
-			Log.log(`ITEM: ${JSON.stringify(payloadItem)}`);
-			const task = itemToTask(payloadItem);
-			newTasks.push(task);
-			taskMap.set(task.id, task);
-		});
-		let orphanedSubTasksCount = 1;
-		while (orphanedSubTasksCount > 0) {
-			// go through list culling out subtasks and adding them to their parent, until they all are accounted for.
-			orphanedSubTasksCount = 0;
-			payloadItems.forEach(function (payloadItem) {
-				if (!payloadItem.parent || taskMap.has(payloadItem.id)) {
-					return;
-				}
-				const task = taskMap.get(payloadItem.parent);
-				if (task) {
-					const subTask = itemToTask(payloadItem, task);
-					task.subTasks.push(subTask);
-					taskMap.set(subTask.id, subTask);
-				} else {
-					orphanedSubTasksCount += 1;
-				}
-			});
-		}
-		return newTasks;
+	getHeader: function () {
+		return this.config.listName || this.data.header;
 	},
 	socketNotificationReceived: function(notification, payload) {
 		var self = this;
 		const updateEvent = `UPDATE_GOOGLE_TASKS_${self.identifier}`;
 		const failedEvent = `FAILED_GOOGLE_TASKS_${self.identifier}`;
 		const transitionEvent = `TRANSITIONED_GOOGLE_TASKS_${self.identifier}`;
+
 		if (notification === updateEvent) {
 			self.config = Object.assign({}, self.config, payload.config || {});
 			self.data.header = self.config.listName;
-			self.loaded = true;
 			if(self.config.rwTokenRelativeFilepath) {
 				self.canUpdate = true;
 			}
-			self.tasks = self.createTaskTree(payload.tasks);
+			self.tasks = itemsToTaskTree(payload.tasks);
+			self.loaded = true;
 			self.updateDom(self.config.animationSpeed);
 		}
 		if (notification === transitionEvent) {
@@ -206,8 +206,13 @@ Module.register("MMM-GoogleTasksKanban",{
 				self.tasks = newTasks;
 			}
 		}
-	    Log.log(`${method} TASK ${task.title}`);
-		self.sendSocketNotification(`${method}_GOOGLE_TASKS`, { identifier: self.identifier, config: self.config, item: taskToItemUpdate(task) });		
+		if (!task.isFakeTask) {
+			Log.log(`${method} TASK ${task.title}`);
+			self.sendSocketNotification(`${method}_GOOGLE_TASKS`, { identifier: self.identifier, config: self.config, item: taskToItemUpdate(task) });		
+		}
+		if (newCategoryName === 'delete' && task.parentTask && task.parentTask.subTasks.length === 0) {
+			self.transitionEvent(task.parentTask, categoryName);
+		}
 	},
 	addStateTransitions: function (wrapper, task, categoryName) {
 		var self = this;
