@@ -331,6 +331,10 @@ Module.register("MMM-GoogleTasksKanban",{
 	getDom: function() {
 		var self = this;
 		var page = document.createElement('div');
+		if (self.hidden) {
+			return page;
+		}
+
 		page.className = 'form';
 		var heading = document.createElement('h1');
 		heading.innerHTML = self.config.listName;
