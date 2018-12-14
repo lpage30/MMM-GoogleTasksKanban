@@ -51,9 +51,7 @@ Module.register("MMM-GoogleTasksKanban",{
 		listName: '', // List Name resolves to listID
 		listID: '', // List ID resolves to list Name
 		inprogressDays: 10, // Number of days to set (from now) for due when transitioning to in progress.
-		reloadInterval: 5 * 60 * 1000, // every 10 minutes
-        updateInterval: 10 * 1000, // every 10 seconds
-		animationSpeed: 2.5 * 1000, // 2.5 seconds
+        updateInterval: 0, // every 24 seconds
 		credentialsRelativeFilepath: '',
 		roTokenRelativeFilepath: '',
 		rwTokenRelativeFilepath: '',
@@ -76,38 +74,22 @@ Module.register("MMM-GoogleTasksKanban",{
 	    Log.log('REQUESTING UPDATE');
 		this.sendSocketNotification('GET_GOOGLE_TASKS', { identifier: self.identifier, config: self.config });
    },
-   /* scheduleVisualUpdateInterval()
-     * Schedule visual update.
-     */
-    scheduleVisualUpdateInterval: function () {
-        var self = this;
-
-        self.updateDom(self.config.animationSpeed);
-
-        setInterval(function () {
-            if (self.pause) {
-                return;
-            }
-            self.activeItem++;
-            self.updateDom(self.config.animationSpeed);
-        }, self.config.updateInterval);
-    },
-
     /* scheduleUpdateRequestInterval()
      * Schedule visual update.
      */
     scheduleUpdateRequestInterval: function () {
         var self = this;
+		if (self.config.updateInterval > 0) {
+			setInterval(function () {
+				if (self.pause) {
+					return;
+				}
 
-        setInterval(function () {
-            if (self.pause) {
-                return;
-            }
-
-            if (self.retry) {
-                self.requestUpdate();
-            }
-        }, self.config.reloadInterval);
+				if (self.retry) {
+					self.requestUpdate();
+				}
+			}, self.config.updateInterval);
+		}
     },
 	// Define start sequence
 	start: function() {
@@ -123,7 +105,6 @@ Module.register("MMM-GoogleTasksKanban",{
         this.error = false;
         this.errorMessage = '';
         this.retry = true;
-		this.config.updateInterval = this.config.reloadInterval;
 		this.requestUpdate();
 		this.pause = false;
 		this.scheduleUpdateRequestInterval();			
