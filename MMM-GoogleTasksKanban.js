@@ -114,13 +114,7 @@ Module.register("MMM-GoogleTasksKanban",{
         var self = this;
 		if (self.config.updateInterval > 0) {
 			setInterval(function () {
-				if (self.pause) {
-					return;
-				}
-
-				if (self.retry) {
-					self.requestUpdate();
-				}
+				self.requestUpdate();
 			}, self.config.updateInterval);
 		}
     },
@@ -137,16 +131,17 @@ Module.register("MMM-GoogleTasksKanban",{
 		this.canUpdate = false;
         this.error = false;
         this.errorMessage = '';
-        this.retry = true;
+		this.render = !this.hidden;
 		this.requestUpdate();
-		this.pause = false;
 		this.scheduleUpdateRequestInterval();			
 	},
 	resume: function () {
+		this.render = true;
 		this.requestUpdate();
 	},
 
 	suspend: function () {
+		this.render = false;
 		this.updateDom();
 	},
 	getHeader: function () {
@@ -338,7 +333,7 @@ Module.register("MMM-GoogleTasksKanban",{
 	getDom: function() {
 		var self = this;
 		var page = document.createElement('div');
-		if (self.hidden) {
+		if (!self.render) {
 			return page;
 		}
 
