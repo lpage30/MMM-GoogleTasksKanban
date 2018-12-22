@@ -1,3 +1,12 @@
+const getKanbanDateTime = (days) => {
+	const RFC3339_Format = 'YYYY-MM-DDTHH:mm:ss.000Z';
+	let result = moment();
+	if (days) {
+		result = result.add('days', days);
+	}
+	return result.format(RFC3339_Format);
+};
+
 const BACKLOG_CATEGORY = 'backlog';
 const INPROGRESS_CATEGORY = 'inprogress';
 const ISDONE_CATEGORY = 'isdone';
@@ -28,21 +37,13 @@ const categoryToHeadingName = (categoryName) => {
 };
 const itemToMissingParent = (item) => Object.assign( { subTasks: [] }, item, { id: `${item.id}Parent`, isFakeTask: true, title: '**missing parent**' } );
 const itemToTask = (item, parentTask = undefined) => Object.assign({ subTasks: [], parentTask, isFakeTask: false }, item);
-const getRFC3339DateTime = (days) => {
-	const RFC3339_Format = 'YYYY-MM-DDTHH:mm:ss.000Z';
-	let result = moment();
-	if (days) {
-		result = result.add('days', days);
-	}
-	return result.format(RFC3339_Format);
-};
 const taskToItemUpdate = (task) => ({
 		id: task.id,
 		title: task.title,
 		status: task.status,
 		completed: task.completed,
 		due: task.due,
-		updated: getRFC3339DateTime(),
+		updated: getKanbanDateTime(),
 	});
 
 const itemsToTaskTree = (items) => {
@@ -185,11 +186,11 @@ Module.register("MMM-GoogleTasksKanban",{
 			task.completed = undefined;
 		} else if (newCategoryName === INPROGRESS_CATEGORY) {
 			task.status = 'needsAction';
-			task.due = getRFC3339DateTime(self.config.inprogressDays);
+			task.due = getKanbanDateTime(self.config.inprogressDays);
 			task.completed = undefined;
 		} else if (newCategoryName === ISDONE_CATEGORY) {
 			task.status = 'completed';
-			task.completed = getRFC3339DateTime();
+			task.completed = getKanbanDateTime();
 		} else if (newCategoryName === 'delete') {
 			method = 'DELETE';
 			if (task.subTasks.length > 0) {
