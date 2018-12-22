@@ -136,11 +136,13 @@ Module.register("MMM-GoogleTasksKanban",{
 		this.scheduleUpdateRequestInterval();			
 	},
 	resume: function () {
+		Log.log('Resume GoogleTasksKanban');
 		this.render = true;
 		this.requestUpdate();
 	},
 
 	suspend: function () {
+		Log.log('Suspend GoogleTasksKanban');
 		this.render = false;
 		this.updateDom();
 	},
